@@ -2,13 +2,43 @@ import Target
 import Player
 from typing import List
 import itertools
-class Coalition:
+class coalition:
     def __init__(self, players:List[Player],targets:List[Target]):
         self.players = players
         self.game_targets = targets
         self.preference = self.calculate_preference()
         self.targets = self.coalition_targets()
         self.payoffs = self.calculate_payoffs()
+
+    def evaluate_join(self,player):
+        list_ids = [player.id for player in self.players]
+        initial = len(self.targets)
+        if any(set(player.neighbors).intersection(list_ids)) and (player.id not in list_ids) :
+            self.add_player(player)
+            posterior = len(self.targets)
+            new_payoff = self.payoffs[player.id]
+            new_targets = posterior - initial
+            self.remove_player(player)
+        if not new_targets>0:
+            return 0,0
+        else:
+            return new_targets,new_payoff
+
+
+
+
+    def add_player(self,player):
+        self.players.append(player)
+        self.preference = self.calculate_preference()
+        self.targets = self.coalition_targets()
+        self.payoffs = self.calculate_payoffs()
+
+    def remove_player(self,player):
+        self.players.remove(player)
+        self.preference = self.calculate_preference()
+        self.targets = self.coalition_targets()
+        self.payoffs = self.calculate_payoffs()
+
 
     def calculate_preference(self):
         preference = {target.name: 0 for target in self.game_targets}
