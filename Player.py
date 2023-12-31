@@ -1,12 +1,13 @@
 from mesa import Agent
 import copy
 
-
+import modelCoal
 
 
 class Player(Agent):
-    def __init__(self, unique_id, skills, preferences, neighbors,model):
+    def __init__(self, unique_id, skills, preferences, neighbors, model : modelCoal.Networkmodel):
         super().__init__(unique_id, model)
+        self.model = model
         self.skills = skills
         self.preferences = preferences
         self.neighbors = neighbors
@@ -18,17 +19,25 @@ class Player(Agent):
         present_coalition = copy.deepcopy(self.coalition)
         for coalition in self.model.coalitions:
             if coalition.can_player_join(self):
-                new_summed_pay, new_pay= coalition.evaluate_join(self)
-                if new_summed_pay > 0 and new_pay > present_payoff:
+                new_summed_pay, new_pay = coalition.evaluate_join(self)
+                if new_summed_pay >= 0 and new_pay >= present_payoff:
                     present_coalition = copy.deepcopy(coalition)
                     present_payoff = new_pay
-        if not self.coalition.unique_id == present_coalition.unique_id:
-            if self.coalition is not None:
-                self.coalition.remove_player(self)
-                self.leave_coalition()
-
-            self.join_coalition(present_coalition)
+        if self.coalition is None:
+            new_coal = next((coal for coal in self.model.coalitions if coal.unique_id == \
+                             present_coalition.unique_id), None)
+            self.join_coalition(new_coal)
             self.payoff = self.find_current_payoff()
+
+        elif self.coalition.unique_id != present_coalition.unique_id:
+            self.coalition.remove_player(self)
+            self.leave_coalition()
+            new_coal = next((coal for coal in self.model.coalitions if coal.unique_id == present_coalition.unique_id),
+                            None)
+            self.join_coalition(new_coal)
+            self.payoff = self.find_current_payoff()
+            self.coalition = next(
+                (coal for coal in self.model.coalitions if coal.unique_id == present_coalition.unique_id), None)
 
     def find_present_coalition(self):
         for coalition in self.model.coalitions:
@@ -43,7 +52,7 @@ class Player(Agent):
             return 0
 
     def join_coalition(self, coalition):
-        self.coalition = coalition
+        coalition.add_player(self)
 
     def leave_coalition(self):
         self.coalition = None
