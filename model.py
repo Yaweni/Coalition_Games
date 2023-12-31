@@ -29,11 +29,13 @@ class Networkmodel(mesa.Model):
 
 
          # Creating the agents.
+        i=0
         for player in players:
-            a = Player.player(player.unique_id, player.skills, player.preferences,  player.neighbors,self)
-            self.coalitions.append(Coalition.coalition([a], targets))
+            a = Player.Player(player.unique_id, player.skills, player.preferences,  player.neighbors,self)
+            self.coalitions.append(Coalition.coalition(i,[a], targets))
             self.grid.place_agent(a, a.unique_id)
             self.schedule.add(a)
+            i += 1
         # Creating collector for difference function defined above.
         self.datacollector = DataCollector(model_reporters={"Total Payoff": total_payoffs})
 
