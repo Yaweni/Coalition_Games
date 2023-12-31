@@ -7,6 +7,8 @@ import networkx as nx
 import Player
 import main
 import Coalition
+import copy
+from typing import List
 
 
 def total_payoffs(model):
@@ -39,12 +41,29 @@ class Networkmodel(mesa.Model):
             i += 1
         # Creating collector for difference function defined above.
         self.datacollector = DataCollector(model_reporters={"Total Payoff": total_payoffs})
+    def compare_coalition_lists(self,list1 : List[Coalition.coalition], list2: List[Coalition.coalition]):
+        members1 = []
+        members2 = []
+        for coalition in list1:
+            a = set([player.unique_id for player in coalition.players])
+            members1.append(a)
+        members1 = [s for s in members1 if s]
+        for coalition in list2:
+            a = set([player.unique_id for player in coalition.players])
+            members2.append(a)
+        members2 = [s for s in members2 if s]
+        found = []
+        for s_coal in members1:
+            found.append(s_coal in members2)
+        return all(found)
+
+
 
     def step(self):
         # self.datacollector.collect(self)
-        initial_coalitions = self.coalitions
+        initial_coalitions = copy.deepcopy(self.coalitions)
         self.schedule.step()
-        if not initial_coalitions == self.coalitions:
+        if not self.compare_coalition_lists(initial_coalitions,self.coalitions):
             self.round += 1
         else:
 

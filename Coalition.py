@@ -14,6 +14,8 @@ class coalition:
         self.payoffs = self.calculate_payoffs()
         self.summed_payoff = self.calculate_summed_payoff()
 
+
+
     def evaluate_join(self, player):
         initial = self.summed_payoff
         new_payoff = 0
@@ -46,6 +48,7 @@ class coalition:
         self.targets = self.coalition_targets()
         self.payoffs = self.calculate_payoffs()
         self.summed_payoff = self.calculate_summed_payoff()
+
 
     def calculate_preference(self):
         preference = {target.name: 0 for target in self.game_targets}

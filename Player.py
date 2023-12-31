@@ -5,7 +5,7 @@ import modelCoal
 
 
 class Player(Agent):
-    def __init__(self, unique_id, skills, preferences, neighbors, model : modelCoal.Networkmodel):
+    def __init__(self, unique_id, skills, preferences, neighbors, model: modelCoal.Networkmodel):
         super().__init__(unique_id, model)
         self.model = model
         self.skills = skills
@@ -27,17 +27,16 @@ class Player(Agent):
             new_coal = next((coal for coal in self.model.coalitions if coal.unique_id == \
                              present_coalition.unique_id), None)
             self.join_coalition(new_coal)
+
             self.payoff = self.find_current_payoff()
 
         elif self.coalition.unique_id != present_coalition.unique_id:
-            self.coalition.remove_player(self)
-            self.leave_coalition()
-            new_coal = next((coal for coal in self.model.coalitions if coal.unique_id == present_coalition.unique_id),
+            self.leave_coalition(self.coalition)
+            new_coal = next((coal for coal in self.model.coalitions if \
+                             coal.unique_id == present_coalition.unique_id),
                             None)
             self.join_coalition(new_coal)
             self.payoff = self.find_current_payoff()
-            self.coalition = next(
-                (coal for coal in self.model.coalitions if coal.unique_id == present_coalition.unique_id), None)
 
     def find_present_coalition(self):
         for coalition in self.model.coalitions:
@@ -53,6 +52,11 @@ class Player(Agent):
 
     def join_coalition(self, coalition):
         coalition.add_player(self)
+        self.coalition = coalition
 
-    def leave_coalition(self):
+    def leave_coalition(self, coalition):
         self.coalition = None
+        coalition.remove_player(self)
+
+    def step(self):
+        self.evaluate_utility()
