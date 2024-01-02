@@ -5,7 +5,7 @@ import modelCoal
 
 
 class Player(Agent):
-    def __init__(self, unique_id, skills, preferences, neighbors, model: modelCoal.Networkmodel):
+    def __init__(self, unique_id, skills : dict, preferences :dict, neighbors : list, model: modelCoal.Networkmodel):
         super().__init__(unique_id, model)
         self.model = model
         self.skills = skills
@@ -23,20 +23,21 @@ class Player(Agent):
                 if new_summed_pay >= 0 and new_pay >= present_payoff:
                     present_coalition = copy.deepcopy(coalition)
                     present_payoff = new_pay
-        if self.coalition is None:
-            new_coal = next((coal for coal in self.model.coalitions if coal.unique_id == \
-                             present_coalition.unique_id), None)
-            self.join_coalition(new_coal)
+                if self.coalition is None:
+                    new_coal = next((coal for coal in self.model.coalitions if coal.unique_id == \
+                                     present_coalition.unique_id), None)
+                    self.join_coalition(new_coal)
 
-            self.payoff = self.find_current_payoff()
+                    self.payoff = self.find_current_payoff()
 
-        elif self.coalition.unique_id != present_coalition.unique_id:
-            self.leave_coalition(self.coalition)
-            new_coal = next((coal for coal in self.model.coalitions if \
-                             coal.unique_id == present_coalition.unique_id),
-                            None)
-            self.join_coalition(new_coal)
-            self.payoff = self.find_current_payoff()
+                #elif self.coalition.unique_id != present_coalition.unique_id:
+                else:
+                    self.leave_coalition(self.coalition)
+                    new_coal = next((coal for coal in self.model.coalitions if \
+                                     coal.unique_id == present_coalition.unique_id),
+                                    None)
+                    self.join_coalition(new_coal)
+                    self.payoff = self.find_current_payoff()
 
     def find_present_coalition(self):
         for coalition in self.model.coalitions:

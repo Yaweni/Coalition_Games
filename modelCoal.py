@@ -5,7 +5,6 @@ from mesa.space import NetworkGrid
 from mesa.time import RandomActivation
 import networkx as nx
 import Player
-import main
 import Coalition
 import copy
 from typing import List

@@ -3,7 +3,7 @@ import Player
 from typing import List
 
 class coalition:
-    def __init__(self, unique_id, players: List[Player], targets: List[Target]):
+    def __init__(self, unique_id, players: list, targets: list):
         self.unique_id = unique_id
         self.players = players
         self.game_targets = targets
