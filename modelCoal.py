@@ -56,9 +56,6 @@ class Networkmodel(mesa.Model):
         for s_coal in members1:
             found.append(s_coal in members2)
         return all(found)
-
-
-
     def step(self):
         # self.datacollector.collect(self)
         initial_coalitions = copy.deepcopy(self.coalitions)

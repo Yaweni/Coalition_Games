@@ -1,8 +1,6 @@
 import Target
 import Player
 from typing import List
-import itertools
-
 
 class coalition:
     def __init__(self, unique_id, players: List[Player], targets: List[Target]):
@@ -13,8 +11,6 @@ class coalition:
         self.targets = self.coalition_targets()
         self.payoffs = self.calculate_payoffs()
         self.summed_payoff = self.calculate_summed_payoff()
-
-
 
     def evaluate_join(self, player):
         initial = self.summed_payoff
@@ -29,7 +25,8 @@ class coalition:
         return gained_payoff, new_payoff
 
     def is_player_in(self, player):
-        return player in self.players
+        list_ids = [player.unique_id for player in self.players]
+        return player.unique_id in list_ids
 
     def can_player_join(self, player):
         list_ids = [player.unique_id for player in self.players]
@@ -43,12 +40,13 @@ class coalition:
         self.summed_payoff = self.calculate_summed_payoff()
 
     def remove_player(self, player):
-        self.players.remove(player)
+        for old_player in self.players:
+            if old_player.unique_id == player.unique_id:
+                self.players.remove(old_player)
         self.preference = self.calculate_preference()
         self.targets = self.coalition_targets()
         self.payoffs = self.calculate_payoffs()
         self.summed_payoff = self.calculate_summed_payoff()
-
 
     def calculate_preference(self):
         preference = {target.name: 0 for target in self.game_targets}
@@ -61,16 +59,51 @@ class coalition:
         preference = {k: v for k, v in sorted(preference.items(), key=lambda item: item[1], reverse=True)}
         return preference
 
+    def calculate_preference_minus_one(self, player1):
+        preference = {target.name: 0 for target in self.game_targets}
+        for player in self.players:
+            if player.unique_id != player1.unique_id:
+                for target, value in player.preferences.items():
+                    preference[target] += value
+        factor = 1.0 / sum(preference.values())
+        for k in preference:
+            preference[k] = preference[k] * factor
+        preference = {k: v for k, v in sorted(preference.items(), key=lambda item: item[1], reverse=True)}
+        return preference
+
     def coalition_targets(self):
         coalition_resources = {}
         acquired_targets = []
         for player in self.players:
             for skill, count in player.skills.items():
                 coalition_resources[skill] = coalition_resources.get(skill, 0) + count
-        for target in self.game_targets:
+        for target in self.preference:
             temp_resources = coalition_resources.copy()
-            for k in target.skills:
-                temp_resources[k] -= target[k]
+            eval_target = next((target1 for target1 in self.game_targets if \
+                                target1.name == target),
+                               None)
+            for k in eval_target.skills:
+                temp_resources[k] -= eval_target.skills[k]
+            acquire = all([v >= 0 for v in temp_resources.values()])
+            if acquire:
+                acquired_targets.append(eval_target)
+                coalition_resources = temp_resources
+        return acquired_targets
+
+    def coalition_targets_minus_one(self, player1):
+        coalition_resources = {}
+        acquired_targets = []
+        for player in self.players:
+            if player.unique_id != player1.unique_id:
+                for skill, count in player.skills.items():
+                    coalition_resources[skill] = coalition_resources.get(skill, 0) + count
+        for target in self.calculate_preference_minus_one(player1):
+            temp_resources = coalition_resources.copy()
+            eval_target = next((target1 for target1 in self.game_targets if \
+                                target1.name == target),
+                               None)
+            for k in eval_target.skills:
+                temp_resources[k] -= eval_target.skills[k]
             acquire = all([v >= 0 for v in temp_resources.values()])
             if acquire:
                 acquired_targets.append(target)
@@ -91,10 +124,10 @@ class coalition:
 
     def calculate_minus_one_payoff(self, player1):
         payoffs = {player.unique_id: 0 for player in self.players if player.unique_id != player1.unique_id}
-        for target in self.targets:
+        summed_pay = 0
+        for target in self.coalition_targets_minus_one(player1):
             for player in self.players:
                 if player.unique_id != player1.unique_id:
                     payoffs[player.unique_id] += target.payoff * player.preferences[target]
-        summed_pay = 0
         summed_pay += sum(payoffs.values())
         return payoffs, summed_pay
