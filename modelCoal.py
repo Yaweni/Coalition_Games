@@ -1,4 +1,5 @@
 import mesa
+from mesa import Model
 import pandas as pd
 from mesa.datacollection import DataCollector
 from mesa.space import NetworkGrid
@@ -17,11 +18,12 @@ def total_payoffs(model):
     return payoffs
 
 
-class Networkmodel(mesa.Model):
+class Networkmodel(Model):
     """Model containing N terrorist agents connected in a network."""
 
     #   Initializing the model.
     def __init__(self, graph, players, targets):
+        super().__init__()
         self.graph = graph
         self.targets = targets
         self.grid = NetworkGrid(graph)
@@ -31,7 +33,7 @@ class Networkmodel(mesa.Model):
         self.coalitions = []
 
         # Creating the agents.
-        i = 0
+        i = 1
         for player in players:
             a = Player.Player(player.unique_id, player.skills, player.preferences, player.neighbors, self)
             self.coalitions.append(Coalition.coalition(i, [a], targets))
@@ -39,7 +41,10 @@ class Networkmodel(mesa.Model):
             self.schedule.add(a)
             i += 1
         # Creating collector for difference function defined above.
-        self.datacollector = DataCollector(model_reporters={"Total Payoff": total_payoffs})
+        self.datacollector = DataCollector(model_reporters={"Total Payoff": total_payoffs},\
+                                           agent_reporters={"Marginal Utility": "marginal",\
+                                                            "Coalition ID":"coalition.unique_id",\
+                                                            "Gained Payoff":"gained"})
     def compare_coalition_lists(self,list1 : List[Coalition.coalition], list2: List[Coalition.coalition]):
         members1 = []
         members2 = []
@@ -56,7 +61,7 @@ class Networkmodel(mesa.Model):
             found.append(s_coal in members2)
         return all(found)
     def step(self):
-        # self.datacollector.collect(self)
+
         initial_coalitions = copy.deepcopy(self.coalitions)
         self.schedule.step()
         if not self.compare_coalition_lists(initial_coalitions,self.coalitions):
@@ -64,5 +69,6 @@ class Networkmodel(mesa.Model):
         else:
 
             self.running = False
-            self.datacollector.collect(self)
+        self.datacollector.collect(self)
+
         return
