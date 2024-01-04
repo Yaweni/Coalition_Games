@@ -44,7 +44,8 @@ class Networkmodel(Model):
         self.datacollector = DataCollector(model_reporters={"Total Payoff": total_payoffs},\
                                            agent_reporters={"Marginal Utility": "marginal",\
                                                             "Coalition ID":"coalition.unique_id",\
-                                                            "Gained Payoff":"gained"})
+                                                            "Gained Payoff":"gained",\
+                                                           "Payoff":"payoff"})
     def compare_coalition_lists(self,list1 : List[Coalition.coalition], list2: List[Coalition.coalition]):
         members1 = []
         members2 = []

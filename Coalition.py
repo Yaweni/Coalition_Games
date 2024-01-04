@@ -79,7 +79,10 @@ class coalition:
             if player.unique_id != player1.unique_id:
                 for target, value in player.preferences.items():
                     preference[target] += value
-        factor = 1.0 / sum(preference.values())
+        if sum(preference.values()) == 0:
+            factor = 0
+        else:
+            factor = 1 / sum(preference.values())
         for k in preference:
             preference[k] = preference[k] * factor
         preference = {k: v for k, v in sorted(preference.items(), key=lambda item: item[1], reverse=True)}

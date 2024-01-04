@@ -16,9 +16,10 @@ class Player(Agent):
 
     def evaluate_utility(self):
         joined = False
-        present_payoff = self.payoff
         if self.coalition is None:
             self.coalition = self.find_present_coalition()
+            self.payoff = self.find_current_payoff()
+            present_payoff = self.payoff
         for coalition in self.model.coalitions:
             if coalition.can_player_join(self):
                 new_summed_pay, new_pay = coalition.evaluate_join(self)
@@ -49,6 +50,7 @@ class Player(Agent):
         if not joined:
             _,summed= self.coalition.joined_payoff(self)
             self.marginal=self.coalition.summed_payoff-summed
+            self.payoff = self.find_current_payoff()
     def find_present_coalition(self):
         for coalition in self.model.coalitions:
             if coalition.is_player_in(self):
@@ -56,7 +58,7 @@ class Player(Agent):
         return None
 
     def find_current_payoff(self):
-        if self.coalition is not None:
+        if self.coalition:
             return self.coalition.payoffs[self.unique_id]
         else:
             return 0

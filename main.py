@@ -5,6 +5,8 @@ from Target import Target
 import Player
 from NoAgentPlayers import NoAgentPlayer
 import networkx as nx
+import importlib
+import pandas as pd
 
 agent_collector={}
 def make_graph_from_players(players):
@@ -65,15 +67,49 @@ if __name__ == "__main__":
     model = modelCoal.Networkmodel(g, players, targets)
     for coalition in model.coalitions:
         players_in = [player.unique_id for player in coalition.players]
-        print(players_in, coalition.summed_payoff)
+        if players_in :
+            print(players_in, coalition.summed_payoff)
     while model.running:
         model.step()
+    summed_payoffs= 0
+    print("Coalitions after first Game")
     for coalition in model.coalitions:
         players_in = [player.unique_id for player in coalition.players]
-        print(players_in, coalition.summed_payoff)
+        if players_in:
+            print(players_in, coalition.summed_payoff)
+        summed_payoffs+=coalition.summed_payoff
+    print("First runtime has payoff ",summed_payoffs)
+
 
     data = model.datacollector.get_model_vars_dataframe()
     data.to_csv('Model_data.csv')
-    data = model.datacollector.get_agent_vars_dataframe()
-    data.to_csv('Agent_data.csv')
+    data2 = model.datacollector.get_agent_vars_dataframe()
+    data2.to_csv('Agent_data.csv')
+
+    last_step = data2.index.levels[0][-1]
+    result=data2.loc[data2.index.get_level_values(0) == last_step].copy()
+    result=result.reset_index('Step',drop=True)
+    result['AgentID']=result.index
+    result=result.reset_index('AgentID',drop=True)
+    result = result.loc[result.groupby('Coalition ID')['Marginal Utility'].idxmax()]
+    agents=result['AgentID'].to_list()
+
+    players2=[player for player in players if player.unique_id not in agents]
+    g2 = make_graph_from_players(players2)
+
+    model2 = modelCoal.Networkmodel(g2, players2, targets)
+    for coalition in model2.coalitions:
+        players_in = [player.unique_id for player in coalition.players]
+        if players_in:
+            print(players_in, coalition.summed_payoff)
+    while model2.running:
+        model2.step()
+    summed_payoffs= 0
+    print("Coalitions after second game")
+    for coalition in model2.coalitions:
+        players_in = [player.unique_id for player in coalition.players]
+        if players_in:
+            print(players_in, coalition.summed_payoff)
+        summed_payoffs+=coalition.summed_payoff
+    print("Second runtime has payoff ",summed_payoffs)
 
