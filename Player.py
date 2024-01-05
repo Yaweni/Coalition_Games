@@ -1,5 +1,4 @@
 from mesa import Agent
-from main import agent_collector
 
 
 class Player(Agent):
@@ -19,11 +18,11 @@ class Player(Agent):
         if self.coalition is None:
             self.coalition = self.find_present_coalition()
             self.payoff = self.find_current_payoff()
-            present_payoff = self.payoff
+        present_payoff = self.payoff
         for coalition in self.model.coalitions:
             if coalition.can_player_join(self):
                 new_summed_pay, new_pay = coalition.evaluate_join(self)
-                if new_summed_pay >= 0 and new_pay >= present_payoff:
+                if new_summed_pay > 0 and new_pay >= present_payoff:
                     self.gained = new_pay - present_payoff
                     self.marginal=new_summed_pay
                     present_coalition = coalition

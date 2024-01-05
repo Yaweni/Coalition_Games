@@ -1,14 +1,15 @@
-from random import sample, random
+from random import sample, random, randint,uniform
 from itertools import combinations, groupby
 import modelCoal
 from Target import Target
-import Player
 from NoAgentPlayers import NoAgentPlayer
 import networkx as nx
-import importlib
+import math
 import pandas as pd
+import numpy as np
 
-agent_collector={}
+
+
 def make_graph_from_players(players):
     edge_list = []
     g = nx.Graph()
@@ -20,31 +21,89 @@ def make_graph_from_players(players):
     return g
 
 
-def gnp_random_connected_graph(n, p):
+def generate_numbers_summing_to_one(length):
+    numbers = [uniform(-1, 1) for _ in range(length - 1)]
+    numbers.append(1 - sum(numbers))
+    # Normalize the numbers to ensure no value is greater than 1
+    max_value = max(numbers) - min(numbers)
+    normalized_numbers = [num / max_value for num in numbers]
+
+    return normalized_numbers
+
+def generate_connected_erdos_renyi_graph(n, p):
+    while True:
+        graph = nx.erdos_renyi_graph(n, p)
+        if nx.is_connected(graph):
+            return graph
+        else:
+            # Find all the connected components
+            components = list(nx.connected_components(graph))
+
+            # Choose two random components and add an edge between them
+            component1 = random.choice(components)
+            component2 = random.choice(components)
+            node1 = random.choice(list(component1))
+            node2 = random.choice(list(component2))
+            graph.add_edge(node1, node2)
+
+def generate_connected_barabasi_graph(n, p):
+    while True:
+        graph = nx.barabasi_albert_graph(n, p)
+        if nx.is_connected(graph):
+            return graph
+        else:
+            # Find all the connected components
+            components = list(nx.connected_components(graph))
+
+            # Choose two random components and add an edge between them
+            component1 = random.choice(components)
+            component2 = random.choice(components)
+            node1 = random.choice(list(component1))
+            node2 = random.choice(list(component2))
+            graph.add_edge(node1, node2)
+
+def make_random_game(num_players: int, num_targets: int, num_skills, connection_probability,scale_factor):
     """
-    Generates a random undirected graph, similarly to an Erdős-Rényi
-    graph, but enforcing that the resulting graph is connected """
-    edges = combinations(range(n), 2)
-    G = nx.Graph()
-    G.add_nodes_from(range(n))
-    if p <= 0:
-        return G
-    if p >= 1:
-        return nx.complete_graph(n, create_using=G)
-    for _, node_edges in groupby(edges, key=lambda x: x[0]):
-        node_edges = list(node_edges)
-        random_edge = sample(node_edges, 2)
-        G.add_edge(*random_edge)
-        for e in node_edges:
-            if random() < p:
-                G.add_edge(*e)
-        return G
+    :param num_players: Number of players in the game
+    :param num_targets: Number of targets in the game
+    :param num_skills: The number of skills distributed in the game
+    :param connection_probability: The connection density of the graph of players
+    :param scale_factor: Average of how many players could cover a skill requirement,
+     should be less than or equal to number of players
+    :return: A graph,list of players, list of targets
+    """
+    assert num_players >= scale_factor
+    player_skills_probabilty = [random() for _ in range(num_skills)]
+    target_skills_prob = [random() for _ in range(num_skills)]
+    #graph = generate_connected_erdos_renyi_graph(num_players, connection_probability)
+    graph = generate_connected_barabasi_graph(num_players, 2)
+    targets_list=[]
+    players_list =[]
+    for i in range(1, num_targets + 1):
+        dict_2 = {}
+        for a, prob in zip(range(1, num_skills + 1), target_skills_prob):
+            if random() > prob:
+                dict_2.setdefault(f'skill{a}', math.ceil(randint(1*scale_factor, 10*scale_factor)))
+        complexity = len(dict_2.keys())
+        if complexity==0:
+            dict_2 = {'skill1': randint(1, 10)}
+            complexity = 1
+        payoff_target = complexity*randint(complexity, num_skills)
+        targets_list.append(Target(f'Target {i}',dict_2,payoff_target))
 
+    for i in range(0,num_players):
+        unique_id  = i
+        skills = {}
+        for a, prob in zip(range(1, num_skills + 1), player_skills_probabilty):
+            if random() > prob:
+                skills.setdefault(f'skill{a}',math.ceil(randint(1,10)))
+        preferences = generate_numbers_summing_to_one(num_targets)
+        pref_dict={}
+        for a, prob in zip(range(1, num_targets + 1), preferences):
+            pref_dict.setdefault(f'Target {a}',prob)
+        players_list.append(NoAgentPlayer(unique_id,skills,pref_dict,list(graph.neighbors(unique_id))))
 
-def make_random_game(num_players: int, num_targets: int, num_skills, connection_probability):
-    graph = gnp_random_connected_graph(num_players, connection_probability)
-    return
-
+    return graph,players_list,targets_list
 
 
 if __name__ == "__main__":
@@ -60,26 +119,31 @@ if __name__ == "__main__":
     target1 = Target('Target 1', {'skill1': 3, 'skill2': 2}, 10)
     target2 = Target('Target 2', {'skill2': 1, 'skill3': 4}, 15)
 
-
     targets = [target1, target2]
     g = make_graph_from_players(players)
+    g,players,targets = make_random_game(70,50,9,0.4,1)
+    """for player in players:
+        print(player.unique_id,player.skills,player.preferences,player.neighbors)
+    for target in targets:
+        print(target.name,target.skills,target.payoff)"""
 
     model = modelCoal.Networkmodel(g, players, targets)
     for coalition in model.coalitions:
         players_in = [player.unique_id for player in coalition.players]
-        if players_in :
-            print(players_in, coalition.summed_payoff)
+        #if players_in:
+          #  print(players_in, coalition.summed_payoff)
     while model.running:
         model.step()
-    summed_payoffs= 0
+    summed_payoffs = 0
     print("Coalitions after first Game")
     for coalition in model.coalitions:
-        players_in = [player.unique_id for player in coalition.players]
-        if players_in:
-            print(players_in, coalition.summed_payoff)
-        summed_payoffs+=coalition.summed_payoff
-    print("First runtime has payoff ",summed_payoffs)
-
+        #players_in = [player.unique_id for player in coalition.players]
+        #if players_in and coalition.summed_payoff != 0:
+            #print(players_in, coalition.summed_payoff)
+        summed_payoffs += coalition.summed_payoff
+    print("Number of pertinent coalitions",len([coalition for coalition in model.coalitions if \
+                                                len(coalition.players)>1 and coalition.summed_payoff > 0]))
+    print("First runtime has payoff ", summed_payoffs)
 
     data = model.datacollector.get_model_vars_dataframe()
     data.to_csv('Model_data.csv')
@@ -87,29 +151,65 @@ if __name__ == "__main__":
     data2.to_csv('Agent_data.csv')
 
     last_step = data2.index.levels[0][-1]
-    result=data2.loc[data2.index.get_level_values(0) == last_step].copy()
-    result=result.reset_index('Step',drop=True)
-    result['AgentID']=result.index
-    result=result.reset_index('AgentID',drop=True)
-    result = result.loc[result.groupby('Coalition ID')['Marginal Utility'].idxmax()]
-    agents=result['AgentID'].to_list()
+    result = data2.loc[data2.index.get_level_values(0) == last_step].copy()
+    result = result.reset_index('Step', drop=True)
+    result['AgentID'] = result.index
+    result = result.reset_index('AgentID', drop=True)
+    result = result.groupby('Coalition ID')
+    grouped_df  = result
+    #grouped_df=data2.loc[data2['Step']==max(data2['Step'])].groupby(['Coalition ID'])
+    filtered_df = grouped_df.filter(lambda x: len(x) > 1)
+    result_df = filtered_df.loc[filtered_df.groupby('Coalition ID')['Marginal Utility'].idxmax()]
+    agents=result_df['AgentID'].tolist()
+    #agents = result['AgentID'].to_list()
+    agents.sort()
+    print("Payers removed ",agents )
 
-    players2=[player for player in players if player.unique_id not in agents]
+    players2 = [player for player in players if player.unique_id not in agents]
     g2 = make_graph_from_players(players2)
 
     model2 = modelCoal.Networkmodel(g2, players2, targets)
     for coalition in model2.coalitions:
         players_in = [player.unique_id for player in coalition.players]
-        if players_in:
-            print(players_in, coalition.summed_payoff)
+        #if players_in and coalition.summed_payoff != 0:
+           # print(players_in, coalition.summed_payoff)
     while model2.running:
         model2.step()
-    summed_payoffs= 0
+    summed_payoffs = 0
     print("Coalitions after second game")
     for coalition in model2.coalitions:
-        players_in = [player.unique_id for player in coalition.players]
-        if players_in:
-            print(players_in, coalition.summed_payoff)
-        summed_payoffs+=coalition.summed_payoff
-    print("Second runtime has payoff ",summed_payoffs)
+        #players_in = [player.unique_id for player in coalition.players]
+        #if players_in and coalition.summed_payoff != 0:
+         #   print(players_in, coalition.summed_payoff)
+        summed_payoffs += coalition.summed_payoff
+    print("Number of pertinent coalitions",len([coalition for coalition in model2.coalitions if \
+                                                len(coalition.players) >1 and coalition.summed_payoff > 0]))
+    print("Second runtime has payoff ", summed_payoffs)
 
+    data2 = pd.read_csv("Agent_data.csv")
+    list_agents= data2.loc[data2['Step']==max(data2['Step'])].sort_values(['Marginal Utility'],\
+                                                                          ascending=False)['AgentID'].to_list()
+
+    players3 = [player for player in players if player.unique_id not in list_agents[:len(agents)]]
+    g3 = make_graph_from_players(players3)
+    agents_list=list_agents[:len(agents)]
+    agents_list.sort()
+    print("Payers removed ", agents_list)
+
+    model3 = modelCoal.Networkmodel(g3, players3, targets)
+    for coalition in model3.coalitions:
+        players_in = [player.unique_id for player in coalition.players]
+        #if players_in and coalition.summed_payoff != 0:
+           # print(players_in, coalition.summed_payoff)
+    while model3.running:
+        model3.step()
+    summed_payoffs = 0
+    print("Coalitions after third game")
+    for coalition in model3.coalitions:
+        #players_in = [player.unique_id for player in coalition.players]
+        #if players_in and coalition.summed_payoff != 0:
+         #   print(players_in, coalition.summed_payoff)
+        summed_payoffs += coalition.summed_payoff
+    print("Number of pertinent coalitions",len([coalition for coalition in model3.coalitions if \
+                                                len(coalition.players) >1 and coalition.summed_payoff > 0]))
+    print("Third runtime has payoff ", summed_payoffs)

@@ -64,12 +64,12 @@ class coalition:
             for target, value in player.preferences.items():
                 preference[target] += value
         if sum(preference.values()) == 0:
-            factor = 0
+            factor = 1
         else:
-            factor = 1 / sum(preference.values())
+            factor = max(preference.values()) - min(preference.values())
 
         for k in preference:
-            preference[k] = preference[k] * factor
+            preference[k] = preference[k] / factor
         preference = {k: v for k, v in sorted(preference.items(), key=lambda item: item[1], reverse=True)}
         return preference
 
@@ -79,12 +79,14 @@ class coalition:
             if player.unique_id != player1.unique_id:
                 for target, value in player.preferences.items():
                     preference[target] += value
+                    
         if sum(preference.values()) == 0:
-            factor = 0
+            factor = 1
         else:
-            factor = 1 / sum(preference.values())
+            factor = max(preference.values()) - min(preference.values())
+            
         for k in preference:
-            preference[k] = preference[k] * factor
+            preference[k] = preference[k] / factor
         preference = {k: v for k, v in sorted(preference.items(), key=lambda item: item[1], reverse=True)}
         return preference
 
@@ -97,13 +99,15 @@ class coalition:
             for skill, count in player.skills.items():
                 coalition_resources[skill] = coalition_resources.get(skill, 0) + count
         for target in self.preference:
-            temp_resources = coalition_resources.copy()
-            eval_target = next((target1 for target1 in self.game_targets if \
-                                target1.name == target),
-                               None)
-            for k in eval_target.skills:
-                temp_resources[k] -= eval_target.skills[k]
-            acquire = all([v >= 0 for v in temp_resources.values()])
+            acquire = False
+            if self.preference[target] >= 0:
+                temp_resources = coalition_resources.copy()
+                eval_target = next((target1 for target1 in self.game_targets if \
+                                    target1.name == target),
+                                   None)
+                for k in eval_target.skills:
+                    temp_resources[k] -= eval_target.skills[k]
+                acquire = all([v >= 0 for v in temp_resources.values()])
             if acquire:
                 acquired_targets.append(eval_target)
                 coalition_resources = temp_resources
@@ -118,14 +122,17 @@ class coalition:
             if player.unique_id != player1.unique_id:
                 for skill, count in player.skills.items():
                     coalition_resources[skill] = coalition_resources.get(skill, 0) + count
-        for target in self.calculate_preference_minus_one(player1):
-            temp_resources = coalition_resources.copy()
-            eval_target = next((target1 for target1 in self.game_targets if \
-                                target1.name == target),
-                               None)
-            for k in eval_target.skills:
-                temp_resources[k] -= eval_target.skills[k]
-            acquire = all([v >= 0 for v in temp_resources.values()])
+        prefs=self.calculate_preference_minus_one(player1)
+        for target in prefs :
+            acquire = False
+            if prefs[target] >= 0:
+                temp_resources = coalition_resources.copy()
+                eval_target = next((target1 for target1 in self.game_targets if \
+                                    target1.name == target),
+                                   None)
+                for k in eval_target.skills:
+                    temp_resources[k] -= eval_target.skills[k]
+                acquire = all([v >= 0 for v in temp_resources.values()])
             if acquire:
                 acquired_targets.append(eval_target)
                 coalition_resources = temp_resources
