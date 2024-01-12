@@ -6,8 +6,7 @@ from NoAgentPlayers import NoAgentPlayer
 import networkx as nx
 import math
 import pandas as pd
-import numpy as np
-
+from heuristics import find_dominating_players
 
 
 def make_graph_from_players(players):
@@ -62,7 +61,7 @@ def generate_connected_barabasi_graph(n, p):
             node2 = random.choice(list(component2))
             graph.add_edge(node1, node2)
 
-def make_random_game(num_players: int, num_targets: int, num_skills, connection_probability,scale_factor):
+def make_random_game(num_players: int, num_targets: int, num_skills, barabasi_neighbors,scale_factor):
     """
     :param num_players: Number of players in the game
     :param num_targets: Number of targets in the game
@@ -76,7 +75,7 @@ def make_random_game(num_players: int, num_targets: int, num_skills, connection_
     player_skills_probabilty = [random() for _ in range(num_skills)]
     target_skills_prob = [random() for _ in range(num_skills)]
     #graph = generate_connected_erdos_renyi_graph(num_players, connection_probability)
-    graph = generate_connected_barabasi_graph(num_players, 2)
+    graph = generate_connected_barabasi_graph(num_players, barabasi_neighbors)
     targets_list=[]
     players_list =[]
     for i in range(1, num_targets + 1):
@@ -120,8 +119,10 @@ if __name__ == "__main__":
     target2 = Target('Target 2', {'skill2': 1, 'skill3': 4}, 15)
 
     targets = [target1, target2]
-    g = make_graph_from_players(players)
-    g,players,targets = make_random_game(70,50,9,0.4,1)
+    #g = make_graph_from_players(players)
+    g,players,targets = make_random_game(70,50,9,2,1)
+    print(find_dominating_players(g,players))
+
     """for player in players:
         print(player.unique_id,player.skills,player.preferences,player.neighbors)
     for target in targets:
