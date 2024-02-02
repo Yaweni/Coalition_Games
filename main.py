@@ -8,7 +8,6 @@ import math
 import pandas as pd
 from heuristics import find_dominating_players
 
-
 def make_graph_from_players(players):
     edge_list = []
     g = nx.Graph()
@@ -107,6 +106,7 @@ def make_random_game(num_players: int, num_targets: int, num_skills, barabasi_ne
 
 if __name__ == "__main__":
 
+
     # Example usage
     # Define players, targets, and their attributes
     player1 = NoAgentPlayer(1, {'skill1': 3, 'skill2': 3}, {'Target 1': 0.7, 'Target 2': 0.3}, [2])
@@ -120,97 +120,138 @@ if __name__ == "__main__":
 
     targets = [target1, target2]
     #g = make_graph_from_players(players)
-    g,players,targets = make_random_game(70,50,9,2,1)
-    print(find_dominating_players(g,players))
+    payoff_list=[['Initial Game','Removing by MU/c','Removing by MUo','Removing by Domination']]
+    for i in range(100):
+        holder=[]
+        g,players,targets = make_random_game(70,50,9,2,1)
+        dominators=find_dominating_players(g,players)
+        print("Dominators ", dominators)
 
-    """for player in players:
-        print(player.unique_id,player.skills,player.preferences,player.neighbors)
-    for target in targets:
-        print(target.name,target.skills,target.payoff)"""
+        """for player in players:
+            print(player.unique_id,player.skills,player.preferences,player.neighbors)
+        for target in targets:
+            print(target.name,target.skills,target.payoff)"""
 
-    model = modelCoal.Networkmodel(g, players, targets)
-    for coalition in model.coalitions:
-        players_in = [player.unique_id for player in coalition.players]
-        #if players_in:
-          #  print(players_in, coalition.summed_payoff)
-    while model.running:
-        model.step()
-    summed_payoffs = 0
-    print("Coalitions after first Game")
-    for coalition in model.coalitions:
-        #players_in = [player.unique_id for player in coalition.players]
-        #if players_in and coalition.summed_payoff != 0:
-            #print(players_in, coalition.summed_payoff)
-        summed_payoffs += coalition.summed_payoff
-    print("Number of pertinent coalitions",len([coalition for coalition in model.coalitions if \
-                                                len(coalition.players)>1 and coalition.summed_payoff > 0]))
-    print("First runtime has payoff ", summed_payoffs)
+        model = modelCoal.Networkmodel(g, players, targets)
+        for coalition in model.coalitions:
+            players_in = [player.unique_id for player in coalition.players]
+            #if players_in:
+              #  print(players_in, coalition.summed_payoff)
+        while model.running:
+            model.step()
+        summed_payoffs = 0
+        print("Coalitions after first Game")
+        for coalition in model.coalitions:
+            #players_in = [player.unique_id for player in coalition.players]
+            #if players_in and coalition.summed_payoff != 0:
+                #print(players_in, coalition.summed_payoff)
+            summed_payoffs += coalition.summed_payoff
+        print("Number of pertinent coalitions",len([coalition for coalition in model.coalitions if \
+                                                    len(coalition.players)>1 and coalition.summed_payoff > 0]))
+        print("First runtime has payoff ", summed_payoffs)
+        holder.append(summed_payoffs)
 
-    data = model.datacollector.get_model_vars_dataframe()
-    data.to_csv('Model_data.csv')
-    data2 = model.datacollector.get_agent_vars_dataframe()
-    data2.to_csv('Agent_data.csv')
+        data = model.datacollector.get_model_vars_dataframe()
+        data.to_csv('Model_data.csv')
+        data2 = model.datacollector.get_agent_vars_dataframe()
+        data2.to_csv('Agent_data.csv')
 
-    last_step = data2.index.levels[0][-1]
-    result = data2.loc[data2.index.get_level_values(0) == last_step].copy()
-    result = result.reset_index('Step', drop=True)
-    result['AgentID'] = result.index
-    result = result.reset_index('AgentID', drop=True)
-    result = result.groupby('Coalition ID')
-    grouped_df  = result
-    #grouped_df=data2.loc[data2['Step']==max(data2['Step'])].groupby(['Coalition ID'])
-    filtered_df = grouped_df.filter(lambda x: len(x) > 1)
-    result_df = filtered_df.loc[filtered_df.groupby('Coalition ID')['Marginal Utility'].idxmax()]
-    agents=result_df['AgentID'].tolist()
-    #agents = result['AgentID'].to_list()
-    agents.sort()
-    print("Payers removed ",agents )
+        last_step = data2.index.levels[0][-1]
+        result = data2.loc[data2.index.get_level_values(0) == last_step].copy()
+        result = result.reset_index('Step', drop=True)
+        result['AgentID'] = result.index
+        result = result.reset_index('AgentID', drop=True)
+        result = result.groupby('Coalition ID')
+        grouped_df  = result
+        #grouped_df=data2.loc[data2['Step']==max(data2['Step'])].groupby(['Coalition ID'])
+        filtered_df = grouped_df.filter(lambda x: len(x) > 1)
+        result_df = filtered_df.loc[filtered_df.groupby('Coalition ID')['Marginal Utility'].idxmax()]
+        agents=result_df['AgentID'].tolist()
+        #agents = result['AgentID'].to_list()
+        agents.sort()
+        print("Payers removed ",agents )
 
-    players2 = [player for player in players if player.unique_id not in agents]
-    g2 = make_graph_from_players(players2)
+        players2 = [player for player in players if player.unique_id not in agents]
+        g2 = make_graph_from_players(players2)
 
-    model2 = modelCoal.Networkmodel(g2, players2, targets)
-    for coalition in model2.coalitions:
-        players_in = [player.unique_id for player in coalition.players]
-        #if players_in and coalition.summed_payoff != 0:
-           # print(players_in, coalition.summed_payoff)
-    while model2.running:
-        model2.step()
-    summed_payoffs = 0
-    print("Coalitions after second game")
-    for coalition in model2.coalitions:
-        #players_in = [player.unique_id for player in coalition.players]
-        #if players_in and coalition.summed_payoff != 0:
-         #   print(players_in, coalition.summed_payoff)
-        summed_payoffs += coalition.summed_payoff
-    print("Number of pertinent coalitions",len([coalition for coalition in model2.coalitions if \
-                                                len(coalition.players) >1 and coalition.summed_payoff > 0]))
-    print("Second runtime has payoff ", summed_payoffs)
+        model2 = modelCoal.Networkmodel(g2, players2, targets)
+        for coalition in model2.coalitions:
+            players_in = [player.unique_id for player in coalition.players]
+            #if players_in and coalition.summed_payoff != 0:
+               # print(players_in, coalition.summed_payoff)
+        while model2.running:
+            model2.step()
+        summed_payoffs = 0
+        print("Coalitions after second game")
+        for coalition in model2.coalitions:
+            summed_payoffs += coalition.summed_payoff
+        print("Number of pertinent coalitions",len([coalition for coalition in model2.coalitions if \
+                                                    len(coalition.players) >1 and coalition.summed_payoff > 0]))
+        print("Second runtime has payoff ", summed_payoffs)
+        holder.append(summed_payoffs)
 
-    data2 = pd.read_csv("Agent_data.csv")
-    list_agents= data2.loc[data2['Step']==max(data2['Step'])].sort_values(['Marginal Utility'],\
-                                                                          ascending=False)['AgentID'].to_list()
+        data2 = pd.read_csv("Agent_data.csv")
+        list_agents= data2.loc[data2['Step']==max(data2['Step'])].sort_values(['Marginal Utility'],\
+                                                                              ascending=False)['AgentID'].to_list()
 
-    players3 = [player for player in players if player.unique_id not in list_agents[:len(agents)]]
-    g3 = make_graph_from_players(players3)
-    agents_list=list_agents[:len(agents)]
-    agents_list.sort()
-    print("Payers removed ", agents_list)
+        players3 = [player for player in players if player.unique_id not in list_agents[:len(agents)]]
+        g3 = make_graph_from_players(players3)
+        agents_list=list_agents[:len(agents)]
+        agents_list.sort()
+        print("Payers removed ", agents_list)
 
-    model3 = modelCoal.Networkmodel(g3, players3, targets)
-    for coalition in model3.coalitions:
-        players_in = [player.unique_id for player in coalition.players]
-        #if players_in and coalition.summed_payoff != 0:
-           # print(players_in, coalition.summed_payoff)
-    while model3.running:
-        model3.step()
-    summed_payoffs = 0
-    print("Coalitions after third game")
-    for coalition in model3.coalitions:
-        #players_in = [player.unique_id for player in coalition.players]
-        #if players_in and coalition.summed_payoff != 0:
-         #   print(players_in, coalition.summed_payoff)
-        summed_payoffs += coalition.summed_payoff
-    print("Number of pertinent coalitions",len([coalition for coalition in model3.coalitions if \
-                                                len(coalition.players) >1 and coalition.summed_payoff > 0]))
-    print("Third runtime has payoff ", summed_payoffs)
+        model3 = modelCoal.Networkmodel(g3, players3, targets)
+        for coalition in model3.coalitions:
+            players_in = [player.unique_id for player in coalition.players]
+            #if players_in and coalition.summed_payoff != 0:
+               # print(players_in, coalition.summed_payoff)
+        while model3.running:
+            model3.step()
+        summed_payoffs = 0
+        print("Coalitions after third game")
+        for coalition in model3.coalitions:
+            #players_in = [player.unique_id for player in coalition.players]
+            #if players_in and coalition.summed_payoff != 0:
+             #   print(players_in, coalition.summed_payoff)
+            summed_payoffs += coalition.summed_payoff
+        print("Number of pertinent coalitions",len([coalition for coalition in model3.coalitions if \
+                                                    len(coalition.players) >1 and coalition.summed_payoff > 0]))
+        print("Third runtime has payoff ", summed_payoffs)
+        holder.append(summed_payoffs)
+
+        players4 = [player for player in players if player.unique_id not in dominators[:len(agents)]]
+        g4 = make_graph_from_players(players4)
+        dom_list=dominators[:len(agents)]
+        #agents_list.sort()
+        print("Dominators removed ", dom_list)
+
+        model4 = modelCoal.Networkmodel(g4, players4, targets)
+        for coalition in model4.coalitions:
+            players_in = [player.unique_id for player in coalition.players]
+            #if players_in and coalition.summed_payoff != 0:
+               # print(players_in, coalition.summed_payoff)
+        while model4.running:
+            model4.step()
+        summed_payoffs = 0
+        print("Coalitions after dominators removed")
+        for coalition in model4.coalitions:
+            #players_in = [player.unique_id for player in coalition.players]
+            #if players_in and coalition.summed_payoff != 0:
+             #   print(players_in, coalition.summed_payoff)
+            summed_payoffs += coalition.summed_payoff
+        print("Number of pertinent coalitions",len([coalition for coalition in model4.coalitions if \
+                                                    len(coalition.players) >1 and coalition.summed_payoff > 0]))
+        print("Domination(4) runtime has payoff ", summed_payoffs)
+        holder.append(summed_payoffs)
+        payoff_list.append(holder)
+    df = pd.DataFrame(payoff_list[1:], columns=payoff_list[0])
+    df.to_csv('Payoffs_to_heuristics_2')
+    payoff_progression=modelCoal.payoffs
+    print(payoff_progression)
+    max_length=max([len(list_len) for list_len in payoff_progression ])
+    for prog_list in payoff_progression:
+        pad = [0]*(max_length-len(prog_list))
+        prog_list.extend(pad)
+    rounds_header=[f"Round {i}" for i in range(0,max_length)]
+    df2 = pd.DataFrame(payoff_progression, columns=rounds_header)
+    df2.to_csv('Progression Data_2')

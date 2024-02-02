@@ -22,7 +22,8 @@ def find_player_utility(graph: nx.Graph, connected_nodes, total_skills, player, 
     skill_density = 0
     for skill in graph.nodes[player]['skills'].keys():
         skill_density += graph.nodes[player]['skills'][skill] / total_skills[skill]
-    skill_density /= len(graph.nodes[player]['skills'].keys())
+    if len(graph.nodes[player]['skills'].keys()):
+        skill_density /= len(graph.nodes[player]['skills'].keys())
     return connectivity_utility + skill_addition + skill_density
 
 
@@ -45,13 +46,11 @@ def find_dominating_players(graph: nx.Graph, players: list):
         player = next((player for player in players if player.unique_id == \
                        id), None)
         graph.nodes[id]['skills'] = player.skills
-    orders = permutations(list(graph.nodes), graph.number_of_nodes())
-    orders = list(orders)
-    far = 0
+    order=list(graph.nodes)
 
     while not all([False for node in list(graph.nodes) if node not in connected_node_set]):
-        far+=1
-        order = random.choice(orders)
+
+        random.shuffle(order)
         temp_util = {}
         for node in order:
             if node not in dominating_nodes:
@@ -64,7 +63,4 @@ def find_dominating_players(graph: nx.Graph, players: list):
         connected_node_set = list(b)
         for skill in graph.nodes[top]['skills'].keys():
             acquired_skills[skill] = acquired_skills.get(skill,0)+graph.nodes[top]['skills'][skill]
-        print("Dominating nodes ", dominating_nodes)
-        print("Connected node set",connected_node_set)
-        break
     return dominating_nodes

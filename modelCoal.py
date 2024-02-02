@@ -10,7 +10,9 @@ import Coalition
 import copy
 from typing import List
 
+import main
 
+payoffs=[]
 def total_payoffs(model):
     payoffs = 0
     for coalition in model.coalitions:
@@ -28,7 +30,7 @@ class Networkmodel(Model):
         self.targets = targets
         self.grid = NetworkGrid(graph)
         self.schedule = RandomActivation(self)
-        self.round = 0
+        self.rounds = 0
         self.running = True
         self.coalitions = []
 
@@ -41,11 +43,12 @@ class Networkmodel(Model):
             self.schedule.add(a)
             i += 1
         # Creating collector for difference function defined above.
-        self.datacollector = DataCollector(model_reporters={"Total Payoff": total_payoffs},\
+        self.datacollector = DataCollector(model_reporters={"Total Payoff": total_payoffs,"Number Rounds":"rounds"},\
                                            agent_reporters={"Marginal Utility": "marginal",\
                                                             "Coalition ID":"coalition.unique_id",\
                                                             "Gained Payoff":"gained",\
                                                            "Payoff":"payoff"})
+        self.payoff_lists=[]
     def compare_coalition_lists(self,list1 : List[Coalition.coalition], list2: List[Coalition.coalition]):
         members1 = []
         members2 = []
@@ -64,12 +67,15 @@ class Networkmodel(Model):
     def step(self):
 
         initial_coalitions = copy.deepcopy(self.coalitions)
+        self.payoff_lists.append(total_payoffs(self))
         self.schedule.step()
         if not self.compare_coalition_lists(initial_coalitions,self.coalitions):
-            self.round += 1
+            self.rounds += 1
+
         else:
 
             self.running = False
+            payoffs.append(self.payoff_lists)
         self.datacollector.collect(self)
 
         return
