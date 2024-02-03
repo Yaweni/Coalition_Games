@@ -281,7 +281,7 @@ if __name__ == "__main__":
         holder.append(summed_payoffs)
         payoff_list.append(holder)
     df = pd.DataFrame(payoff_list[1:], columns=payoff_list[0])
-    df.to_csv('Payoffs_to_heuristics_5')
+    df.to_csv('Payoffs_to_heuristics_6')
     payoff_progression = modelCoal.payoffs
     max_length = max([len(list_len) for list_len in payoff_progression])
     for prog_list in payoff_progression:
@@ -289,5 +289,5 @@ if __name__ == "__main__":
         prog_list.extend(pad)
     rounds_header = [f"Round {i}" for i in range(0, max_length)]
     df2 = pd.DataFrame(payoff_progression, columns=rounds_header)
-    df2.to_csv('Progression Data_5')
+    df2.to_csv('Progression Data_6')
     df.plot()

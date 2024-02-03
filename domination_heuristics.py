@@ -28,6 +28,12 @@ def find_player_utility(graph: nx.Graph, connected_nodes, total_skills, player, 
 
 
 def find_skills_total(players, skills):
+    '''
+
+    :param players: A list of players in the game
+    :param skills:  The name set of skills possesed by players in this game
+    :return: A dictionary describing the total amount of every skill
+    '''
     skills_dict = {}
     for skill in skills:
         skills_dict[skill] = 0
