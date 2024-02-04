@@ -9,7 +9,7 @@ import pandas as pd
 from domination_heuristics import find_dominating_players
 from tqdm import tqdm
 import centrality_heuristic as ch
-
+import skillcrit_heuristic as sc
 
 def make_graph_from_players(players):
     edge_list = []
@@ -128,8 +128,8 @@ if __name__ == "__main__":
     targets = [target1, target2]
     # g = make_graph_from_players(players)
     payoff_list = [['Initial Game', 'Removing by MU/c', 'Removing by MUo',\
-                    'Removing by Domination','Eigen','Subgraph','Degree','Betweenness','Closeness']]
-    for i in tqdm(range(30)):
+                    'Removing by Domination','Eigen','Subgraph','Degree','Betweenness','Closeness','Skill Crit']]
+    for i in tqdm(range(1)):
         holder = []
         g, players, targets = make_random_game(70, 12, 8, 2, 3)
         dominators = find_dominating_players(g, players)
@@ -138,6 +138,7 @@ if __name__ == "__main__":
         top_between = ch.top_betweenness_nodes(g)
         top_closeness = ch.top_closeness_nodes(g)
         top_subgraph = ch.top_subgraph_nodes(g)
+        top_skill = sc.players_skill_critical(players,targets)
         model = modelCoal.Networkmodel(g, players, targets)
         for coalition in model.coalitions:
             players_in = [player.unique_id for player in coalition.players]
@@ -148,6 +149,8 @@ if __name__ == "__main__":
         summed_payoffs = 0
         for coalition in model.coalitions:
             summed_payoffs += coalition.summed_payoff
+            if len(coalition.players)>1:
+                print([(target.name,target.skills,target.payoff) for target in coalition.targets])
         holder.append(summed_payoffs)
         data = model.datacollector.get_model_vars_dataframe()
         data.to_csv('Model_data.csv')
@@ -167,6 +170,10 @@ if __name__ == "__main__":
         agents = result_df['AgentID'].tolist()
         # agents = result['AgentID'].to_list()
         agents.sort()
+        print(agents)
+        for player in players:
+            if player.unique_id in agents:
+                print(player.unique_id,player.skills,[n for n in g.neighbors(player.unique_id)])
 
         players2 = [player for player in players if player.unique_id not in agents]
         g2 = make_graph_from_players(players2)
@@ -179,6 +186,9 @@ if __name__ == "__main__":
         summed_payoffs = 0
         for coalition in model2.coalitions:
             summed_payoffs += coalition.summed_payoff
+            if len(coalition.players)>1:
+                print([(target.name,target.skills,target.payoff) for target in coalition.targets])
+                print([player.unique_id for player in coalition.players])
         holder.append(summed_payoffs)
 
         data2 = pd.read_csv("Agent_data.csv")
@@ -203,6 +213,7 @@ if __name__ == "__main__":
         players4 = [player for player in players if player.unique_id not in dominators[:len(agents)]]
         g4 = make_graph_from_players(players4)
         dom_list = dominators[:len(agents)]
+        print(dominators)
 
         model4 = modelCoal.Networkmodel(g4, players4, targets)
         for coalition in model4.coalitions:
@@ -212,6 +223,8 @@ if __name__ == "__main__":
         summed_payoffs = 0
         for coalition in model4.coalitions:
             summed_payoffs += coalition.summed_payoff
+            if len(coalition.players)>1:
+                print([(target.name,target.skills,target.payoff) for target in coalition.targets])
         holder.append(summed_payoffs)
 
 
@@ -269,7 +282,6 @@ if __name__ == "__main__":
 
         players9 = [player for player in players if player.unique_id not in top_closeness[:len(agents)]]
         g9 = make_graph_from_players(players9)
-
         model9 = modelCoal.Networkmodel(g9, players9, targets)
         for coalition in model9.coalitions:
             players_in = [player.unique_id for player in coalition.players]
@@ -279,9 +291,23 @@ if __name__ == "__main__":
         for coalition in model9.coalitions:
             summed_payoffs += coalition.summed_payoff
         holder.append(summed_payoffs)
+        print(top_closeness)
+
+        players10 = [player for player in players if player.unique_id not in top_skill[:len(agents)]]
+
+        g10 = make_graph_from_players(players10)
+        model10 = modelCoal.Networkmodel(g10, players10, targets)
+        for coalition in model10.coalitions:
+            players_in = [player.unique_id for player in coalition.players]
+        while model10.running:
+            model10.step()
+        summed_payoffs = 0
+        for coalition in model10.coalitions:
+            summed_payoffs += coalition.summed_payoff
+        holder.append(summed_payoffs)
         payoff_list.append(holder)
     df = pd.DataFrame(payoff_list[1:], columns=payoff_list[0])
-    df.to_csv('Payoffs_to_heuristics_6')
+    df.to_csv('Payoffs_to_heuristics_7')
     payoff_progression = modelCoal.payoffs
     max_length = max([len(list_len) for list_len in payoff_progression])
     for prog_list in payoff_progression:
@@ -289,5 +315,5 @@ if __name__ == "__main__":
         prog_list.extend(pad)
     rounds_header = [f"Round {i}" for i in range(0, max_length)]
     df2 = pd.DataFrame(payoff_progression, columns=rounds_header)
-    df2.to_csv('Progression Data_6')
+    df2.to_csv('Progression Data_7')
     df.plot()

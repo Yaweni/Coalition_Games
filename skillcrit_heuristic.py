@@ -12,6 +12,7 @@ def identify_skill_rarity(targets:list):
             skill_crit[skill] = skill_crit.get(skill,0) + (target.payoff/temp[skill])
 
     skill_crit = {k: v for k, v in sorted(skill_crit.items(), key=lambda item: item[1], reverse=True)}
+    print(skill_crit)
     return skill_crit
 
 def players_skill_critical(players: list, targets : list):
@@ -25,6 +26,7 @@ def players_skill_critical(players: list, targets : list):
             crit_val += (skills[skill]/skills_total[skill])*skill_crit.get(skill,0)
         players_crit[player.unique_id] = crit_val
     players_crit = {k: v for k, v in sorted(players_crit.items(), key=lambda item: item[1], reverse=True)}
+    print(players_crit)
     return [key for key in players_crit.keys()]
 
 
