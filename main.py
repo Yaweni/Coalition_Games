@@ -1,137 +1,23 @@
-from random import sample, random, randint, uniform
-from itertools import combinations, groupby
 import modelCoal
 from Target import Target
 from NoAgentPlayers import NoAgentPlayer
-import networkx as nx
-import math
 import pandas as pd
 from domination_heuristics import find_dominating_players
 from tqdm import tqdm
 import centrality_heuristic as ch
 import skillcrit_heuristic as sc
-
-def make_graph_from_players(players):
-    edge_list = []
-    g = nx.Graph()
-    for player in players:
-        for neighbor in player.neighbors:
-            a = {player.unique_id, neighbor}
-            edge_list.append(a)
-    g.add_edges_from(edge_list)
-    return g
-
-
-def generate_numbers_summing_to_one(length):
-    numbers = [uniform(-1, 1) for _ in range(length - 1)]
-    numbers.append(1 - sum(numbers))
-    # Normalize the numbers to ensure no value is greater than 1
-    max_value = max(numbers) - min(numbers)
-    normalized_numbers = [num / max_value for num in numbers]
-
-    return normalized_numbers
-
-
-def generate_connected_erdos_renyi_graph(n, p):
-    while True:
-        graph = nx.erdos_renyi_graph(n, p)
-        if nx.is_connected(graph):
-            return graph
-        else:
-            # Find all the connected components
-            components = list(nx.connected_components(graph))
-
-            # Choose two random components and add an edge between them
-            component1 = random.choice(components)
-            component2 = random.choice(components)
-            node1 = random.choice(list(component1))
-            node2 = random.choice(list(component2))
-            graph.add_edge(node1, node2)
-
-
-def generate_connected_barabasi_graph(n, p):
-    while True:
-        graph = nx.barabasi_albert_graph(n, p)
-        if nx.is_connected(graph):
-            for (u, v, w) in graph.edges(data=True):
-                w['weight'] = 1
-            return graph
-        else:
-            # Find all the connected components
-            components = list(nx.connected_components(graph))
-
-            # Choose two random components and add an edge between them
-            component1 = random.choice(components)
-            component2 = random.choice(components)
-            node1 = random.choice(list(component1))
-            node2 = random.choice(list(component2))
-            graph.add_edge(node1, node2)
-
-
-def make_random_game(num_players: int, num_targets: int, num_skills, barabasi_neighbors, scale_factor):
-    """
-    :param num_players: Number of players in the game
-    :param num_targets: Number of targets in the game
-    :param num_skills: The number of skills distributed in the game
-    :param connection_probability: The connection density of the graph of players
-    :param scale_factor: Average of how many players could cover a skill requirement,
-     should be less than or equal to number of players
-    :return: A graph,list of players, list of targets
-    """
-    assert num_players >= scale_factor
-    player_skills_probabilty = [random() for _ in range(num_skills)]
-    target_skills_prob = [random() for _ in range(num_skills)]
-    # graph = generate_connected_erdos_renyi_graph(num_players, connection_probability)
-    graph = generate_connected_barabasi_graph(num_players, barabasi_neighbors)
-    targets_list = []
-    players_list = []
-    for i in range(1, num_targets + 1):
-        dict_2 = {}
-        for a, prob in zip(range(1, num_skills + 1), target_skills_prob):
-            if random() > prob:
-                dict_2.setdefault(f'skill{a}', math.ceil(randint(1 * scale_factor, 10 * scale_factor)))
-        complexity = len(dict_2.keys())
-        if complexity == 0:
-            dict_2 = {'skill1': randint(1, 10)}
-            complexity = 1
-        payoff_target = complexity * randint(complexity, num_skills)
-        targets_list.append(Target(f'Target {i}', dict_2, payoff_target))
-
-    for i in range(0, num_players):
-        unique_id = i
-        skills = {}
-        for a, prob in zip(range(1, num_skills + 1), player_skills_probabilty):
-            if random() > prob:
-                skills.setdefault(f'skill{a}', math.ceil(randint(1, 10)))
-        preferences = generate_numbers_summing_to_one(num_targets)
-        pref_dict = {}
-        for a, prob in zip(range(1, num_targets + 1), preferences):
-            pref_dict.setdefault(f'Target {a}', prob)
-        players_list.append(NoAgentPlayer(unique_id, skills, pref_dict, list(graph.neighbors(unique_id))))
-
-    return graph, players_list, targets_list
-
+import target_heuristic as th
+from utils import make_graph_from_players, make_random_game
 
 if __name__ == "__main__":
 
-    # Example usage
-    # Define players, targets, and their attributes
-    player1 = NoAgentPlayer(1, {'skill1': 3, 'skill2': 3}, {'Target 1': 0.7, 'Target 2': 0.3}, [2])
-    player2 = NoAgentPlayer(2, {'skill2': 4, 'skill3': 4}, {'Target 1': 0.4, 'Target 2': 0.6}, [1, 3])
-    player3 = NoAgentPlayer(3, {'skill1': 2, 'skill3': 2}, {'Target 1': 0.5, 'Target 2': 0.5}, [2])
 
-    players = [player1, player2, player3]
-
-    target1 = Target('Target 1', {'skill1': 3, 'skill2': 2}, 10)
-    target2 = Target('Target 2', {'skill2': 1, 'skill3': 4}, 15)
-
-    targets = [target1, target2]
     # g = make_graph_from_players(players)
     payoff_list = [['Initial Game', 'Removing by MU/c', 'Removing by MUo',\
-                    'Removing by Domination','Eigen','Subgraph','Degree','Betweenness','Closeness','Skill Crit']]
-    for i in tqdm(range(1)):
+                    'Removing by Domination','Eigen','Subgraph','Degree','Betweenness','Closeness','Skill Crit','Top Targets']]
+    for i in tqdm(range(100)):
         holder = []
-        g, players, targets = make_random_game(70, 12, 8, 2, 3)
+        g, players, targets = make_random_game(70, 12, 8, 2, 1)
         dominators = find_dominating_players(g, players)
         top_eigen = ch.top_eigen_nodes(g)
         top_degree = ch.top_degree_nodes(g)
@@ -139,6 +25,7 @@ if __name__ == "__main__":
         top_closeness = ch.top_closeness_nodes(g)
         top_subgraph = ch.top_subgraph_nodes(g)
         top_skill = sc.players_skill_critical(players,targets)
+        top_targets = th.find_target_difficulty(players,targets)
         model = modelCoal.Networkmodel(g, players, targets)
         for coalition in model.coalitions:
             players_in = [player.unique_id for player in coalition.players]
@@ -149,8 +36,6 @@ if __name__ == "__main__":
         summed_payoffs = 0
         for coalition in model.coalitions:
             summed_payoffs += coalition.summed_payoff
-            if len(coalition.players)>1:
-                print([(target.name,target.skills,target.payoff) for target in coalition.targets])
         holder.append(summed_payoffs)
         data = model.datacollector.get_model_vars_dataframe()
         data.to_csv('Model_data.csv')
@@ -170,10 +55,6 @@ if __name__ == "__main__":
         agents = result_df['AgentID'].tolist()
         # agents = result['AgentID'].to_list()
         agents.sort()
-        print(agents)
-        for player in players:
-            if player.unique_id in agents:
-                print(player.unique_id,player.skills,[n for n in g.neighbors(player.unique_id)])
 
         players2 = [player for player in players if player.unique_id not in agents]
         g2 = make_graph_from_players(players2)
@@ -186,9 +67,6 @@ if __name__ == "__main__":
         summed_payoffs = 0
         for coalition in model2.coalitions:
             summed_payoffs += coalition.summed_payoff
-            if len(coalition.players)>1:
-                print([(target.name,target.skills,target.payoff) for target in coalition.targets])
-                print([player.unique_id for player in coalition.players])
         holder.append(summed_payoffs)
 
         data2 = pd.read_csv("Agent_data.csv")
@@ -213,7 +91,6 @@ if __name__ == "__main__":
         players4 = [player for player in players if player.unique_id not in dominators[:len(agents)]]
         g4 = make_graph_from_players(players4)
         dom_list = dominators[:len(agents)]
-        print(dominators)
 
         model4 = modelCoal.Networkmodel(g4, players4, targets)
         for coalition in model4.coalitions:
@@ -223,8 +100,6 @@ if __name__ == "__main__":
         summed_payoffs = 0
         for coalition in model4.coalitions:
             summed_payoffs += coalition.summed_payoff
-            if len(coalition.players)>1:
-                print([(target.name,target.skills,target.payoff) for target in coalition.targets])
         holder.append(summed_payoffs)
 
 
@@ -291,7 +166,6 @@ if __name__ == "__main__":
         for coalition in model9.coalitions:
             summed_payoffs += coalition.summed_payoff
         holder.append(summed_payoffs)
-        print(top_closeness)
 
         players10 = [player for player in players if player.unique_id not in top_skill[:len(agents)]]
 
@@ -305,9 +179,22 @@ if __name__ == "__main__":
         for coalition in model10.coalitions:
             summed_payoffs += coalition.summed_payoff
         holder.append(summed_payoffs)
+
+        for target in targets:
+            if target.name in top_targets[:len(agents)]:
+                target.payoff=0
+        model11 = modelCoal.Networkmodel(g,players,targets)
+        for coalition in model11.coalitions:
+            players_in = [player.unique_id for player in coalition.players]
+        while model11.running:
+            model11.step()
+        summed_payoffs = 0
+        for coalition in model11.coalitions:
+            summed_payoffs += coalition.summed_payoff
+        holder.append(summed_payoffs)
         payoff_list.append(holder)
     df = pd.DataFrame(payoff_list[1:], columns=payoff_list[0])
-    df.to_csv('Payoffs_to_heuristics_7')
+    df.to_csv('Payoffs_to_heuristics_3')
     payoff_progression = modelCoal.payoffs
     max_length = max([len(list_len) for list_len in payoff_progression])
     for prog_list in payoff_progression:
@@ -315,5 +202,5 @@ if __name__ == "__main__":
         prog_list.extend(pad)
     rounds_header = [f"Round {i}" for i in range(0, max_length)]
     df2 = pd.DataFrame(payoff_progression, columns=rounds_header)
-    df2.to_csv('Progression Data_7')
+    df2.to_csv('Progression Data_3')
     df.plot()
